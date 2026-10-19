@@ -69,23 +69,29 @@
             if (procesando) return;
             procesando = true;
 
-            mensaje.textContent = 'QR leído: ' + codigo +
-              '. Registrando asistencia...';
+            mensaje.textContent =
+              'QR leído: ' + codigo + '. Enviando registro...';
 
             try {
               await lector.stop();
 
-              await fetch(
-                URL_APPS_SCRIPT + '?codigo=' + encodeURIComponent(codigo),
-                { method: 'GET', mode: 'no-cors' }
-              );
+              const url = URL_APPS_SCRIPT +
+                '?codigo=' + encodeURIComponent(codigo) +
+                '&t=' + Date.now();
+
+              await fetch(url, {
+                method: 'GET',
+                mode: 'no-cors',
+                redirect: 'follow'
+              });
 
               mensaje.textContent =
-                'Solicitud enviada para: ' + codigo +
-                '. Comprueba la hoja Control para confirmar el registro.';
+                'Solicitud enviada para ' + codigo +
+                '. Revisa la hoja Control para confirmar el registro.';
 
             } catch (error) {
-              mensaje.textContent = 'Error: ' + error.message;
+              mensaje.textContent =
+                'Error de conexión: ' + error.message;
             }
 
             boton.textContent = 'Escanear siguiente';
