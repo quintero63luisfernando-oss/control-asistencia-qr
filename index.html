@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Control de asistencia</title>
-
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
@@ -40,11 +39,7 @@
   <p>Coloca tu código QR frente a la cámara.</p>
 
   <div id="reader"></div>
-
-  <p id="mensaje">
-    Pulsa «Iniciar cámara» para comenzar.
-  </p>
-
+  <p id="mensaje">Pulsa «Iniciar cámara» para comenzar.</p>
   <button id="iniciar">Iniciar cámara</button>
 
   <script>
@@ -68,59 +63,44 @@
 
         await lector.start(
           { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 230, height: 230 }
-          },
+          { fps: 10, qrbox: { width: 230, height: 230 } },
+
           async (codigo) => {
             if (procesando) return;
-
             procesando = true;
-            mensaje.textContent =
-              'QR leído: ' + codigo +
-              '. Preparando conexión con el registro...';
+
+            mensaje.textContent = 'QR leído: ' + codigo +
+              '. Registrando asistencia...';
 
             try {
               await lector.stop();
 
-              await fetch(URL_APPS_SCRIPT, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                  'Content-Type': 'text/plain;charset=utf-8'
-                },
-                body: JSON.stringify({
-                  codigo: codigo
-                })
-              });
+              await fetch(
+                URL_APPS_SCRIPT + '?codigo=' + encodeURIComponent(codigo),
+                { method: 'GET', mode: 'no-cors' }
+              );
 
               mensaje.textContent =
                 'Solicitud enviada para: ' + codigo +
-                '. Comprueba la hoja de asistencia para confirmar.';
+                '. Comprueba la hoja Control para confirmar el registro.';
 
             } catch (error) {
-              mensaje.textContent =
-                'Error al enviar: ' + error.message;
+              mensaje.textContent = 'Error: ' + error.message;
             }
 
             boton.textContent = 'Escanear siguiente';
             boton.disabled = false;
-            boton.removeEventListener('click', iniciarEscaner);
-            boton.addEventListener('click', () => {
-              location.reload();
-            }, { once: true });
+            boton.onclick = () => location.reload();
           }
         );
 
         mensaje.textContent = 'Cámara activa. Escanea el QR.';
 
       } catch (error) {
-        mensaje.textContent =
-          'Error de cámara: ' + error.message;
+        mensaje.textContent = 'Error de cámara: ' + error.message;
         boton.disabled = false;
       }
     }
   </script>
 </body>
 </html>
-
