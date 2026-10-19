@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control de asistencia</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 480px;
+      margin: 20px auto;
+      padding: 16px;
+      text-align: center;
+    }
+    #reader {
+      width: 100%;
+      margin: 20px auto;
+    }
+    #mensaje {
+      overflow-wrap: anywhere;
+      padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Control de asistencia</h2>
+  <p>Coloca tu código QR frente a la cámara.</p>
+  <div id="reader"></div>
+  <p id="mensaje">Pulsa «Iniciar cámara» para comenzar.</p>
+  <button id="iniciar">Iniciar cámara</button>
+
+  <script>
+    const URL_APPS_SCRIPT =
+      'PEGA_AQUI_TU_URL_DE_APPS_SCRIPT';
+
+    const mensaje = document.getElementById('mensaje');
+    const boton = document.getElementById('iniciar');
+    let lector = null;
+    let procesando = false;
+
+    boton.addEventListener('click', async () => {
+      boton.disabled = true;
+      mensaje.textContent = 'Solicitando acceso a la cámara...';
+
+      try {
+        lector = new Html5Qrcode('reader');
+
+        await lector.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 230, height: 230 } },
+          async (codigo) => {
+            if (procesando) return;
+            procesando = true;
+            mensaje.textContent = 'QR leído: ' + codigo;
+
+            try {
+              await lector.stop();
+              mensaje.textContent =
+                'Código leído. Preparando conexión con el registro...';
+              // La conexión con Apps Script se añadirá
+              // en el siguiente paso.
+            } catch (e) {
+              mensaje.textContent = 'Error: ' + e.message;
+            }
+          }
+        );
+
+        mensaje.textContent = 'Cámara activa. Escanea el QR.';
+      } catch (e) {
+        mensaje.textContent =
+          'No se pudo abrir la cámara: ' + e.message;
+        boton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
