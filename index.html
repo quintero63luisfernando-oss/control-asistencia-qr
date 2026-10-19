@@ -24,39 +24,70 @@
     #mensaje {
       overflow-wrap: anywhere;
       padding: 12px;
+      font-weight: bold;
     }
 
     button {
-      padding: 12px 20px;
-      font-size: 16px;
+      padding: 14px 20px;
+      margin: 6px;
+      font-size: 17px;
       cursor: pointer;
+      border: 0;
+      border-radius: 8px;
+    }
+
+    #entrada {
+      background: #d9ead3;
+    }
+
+    #salida {
+      background: #f4cccc;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
   </style>
 </head>
 
 <body>
   <h2>Control de asistencia</h2>
-  <p>Coloca tu código QR frente a la cámara.</p>
+  <p>Primero selecciona el movimiento y después escanea tu QR.</p>
 
+  <button id="entrada">ENTRADA</button>
+  <button id="salida">SALIDA</button>
+
+  <p id="mensaje">Selecciona Entrada o Salida para comenzar.</p>
   <div id="reader"></div>
-  <p id="mensaje">Pulsa «Iniciar cámara» para comenzar.</p>
-  <button id="iniciar">Iniciar cámara</button>
+
+  <button id="reiniciar" hidden>Nuevo registro</button>
 
   <script>
     const URL_APPS_SCRIPT =
       'https://script.google.com/macros/s/AKfycbyCaQXJ6HZzTrGkVz1xqEFddoQ-DsLzrSj6cW5bvQgF29LBubCvrNTmgK8CuFDIJJvNrQ/exec';
 
     const mensaje = document.getElementById('mensaje');
-    const boton = document.getElementById('iniciar');
+    const botonEntrada = document.getElementById('entrada');
+    const botonSalida = document.getElementById('salida');
+    const botonReiniciar = document.getElementById('reiniciar');
 
     let lector = null;
     let procesando = false;
+    let tipoSeleccionado = '';
 
-    boton.addEventListener('click', iniciarEscaner);
+    botonEntrada.addEventListener('click', () => seleccionarTipo('Entrada'));
+    botonSalida.addEventListener('click', () => seleccionarTipo('Salida'));
+    botonReiniciar.addEventListener('click', () => location.reload());
 
-    async function iniciarEscaner() {
-      boton.disabled = true;
-      mensaje.textContent = 'Abriendo cámara...';
+    async function seleccionarTipo(tipo) {
+      if (lector || procesando) return;
+
+      tipoSeleccionado = tipo;
+      botonEntrada.disabled = true;
+      botonSalida.disabled = true;
+      mensaje.textContent = tipo.toUpperCase() +
+        ': abre la cámara y escanea el QR.';
 
       try {
         lector = new Html5Qrcode('reader');
@@ -70,13 +101,15 @@
             procesando = true;
 
             mensaje.textContent =
-              'QR leído: ' + codigo + '. Enviando registro...';
+              'Registrando ' + tipoSeleccionado.toLowerCase() +
+              ' para ' + codigo + '...';
 
             try {
               await lector.stop();
 
               const url = URL_APPS_SCRIPT +
                 '?codigo=' + encodeURIComponent(codigo) +
+                '&tipo=' + encodeURIComponent(tipoSeleccionado) +
                 '&t=' + Date.now();
 
               await fetch(url, {
@@ -86,25 +119,25 @@
               });
 
               mensaje.textContent =
-                'Solicitud enviada para ' + codigo +
-                '. Revisa la hoja Control para confirmar el registro.';
+                'SOLICITUD ENVIADA: ' +
+                tipoSeleccionado.toUpperCase() +
+                ' para ' + codigo +
+                '. Comprueba Google Sheets para confirmar.';
 
             } catch (error) {
               mensaje.textContent =
-                'Error de conexión: ' + error.message;
+                'Error al enviar el registro: ' + error.message;
             }
 
-            boton.textContent = 'Escanear siguiente';
-            boton.disabled = false;
-            boton.onclick = () => location.reload();
+            botonReiniciar.hidden = false;
           }
         );
 
-        mensaje.textContent = 'Cámara activa. Escanea el QR.';
-
       } catch (error) {
         mensaje.textContent = 'Error de cámara: ' + error.message;
-        boton.disabled = false;
+        botonEntrada.disabled = false;
+        botonSalida.disabled = false;
+        lector = null;
       }
     }
   </script>
