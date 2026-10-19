@@ -5,7 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Control de asistencia</title>
+
   <script src="https://unpkg.com/html5-qrcode"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,66 +16,111 @@
       padding: 16px;
       text-align: center;
     }
+
     #reader {
       width: 100%;
       margin: 20px auto;
     }
+
     #mensaje {
       overflow-wrap: anywhere;
       padding: 12px;
     }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
   <h2>Control de asistencia</h2>
   <p>Coloca tu código QR frente a la cámara.</p>
+
   <div id="reader"></div>
-  <p id="mensaje">Pulsa «Iniciar cámara» para comenzar.</p>
+
+  <p id="mensaje">
+    Pulsa «Iniciar cámara» para comenzar.
+  </p>
+
   <button id="iniciar">Iniciar cámara</button>
 
   <script>
     const URL_APPS_SCRIPT =
-      'PEGA_AQUI_TU_URL_DE_APPS_SCRIPT';
+      'https://script.google.com/macros/s/AKfycbyCaQXJ6HZzTrGkVz1xqEFddoQ-DsLzrSj6cW5bvQgF29LBubCvrNTmgK8CuFDIJJvNrQ/exec';
 
     const mensaje = document.getElementById('mensaje');
     const boton = document.getElementById('iniciar');
+
     let lector = null;
     let procesando = false;
 
-    boton.addEventListener('click', async () => {
+    boton.addEventListener('click', iniciarEscaner);
+
+    async function iniciarEscaner() {
       boton.disabled = true;
-      mensaje.textContent = 'Solicitando acceso a la cámara...';
+      mensaje.textContent = 'Abriendo cámara...';
 
       try {
         lector = new Html5Qrcode('reader');
 
         await lector.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 230, height: 230 } },
+          {
+            fps: 10,
+            qrbox: { width: 230, height: 230 }
+          },
           async (codigo) => {
             if (procesando) return;
+
             procesando = true;
-            mensaje.textContent = 'QR leído: ' + codigo;
+            mensaje.textContent =
+              'QR leído: ' + codigo +
+              '. Preparando conexión con el registro...';
 
             try {
               await lector.stop();
+
+              await fetch(URL_APPS_SCRIPT, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                  'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: JSON.stringify({
+                  codigo: codigo
+                })
+              });
+
               mensaje.textContent =
-                'Código leído. Preparando conexión con el registro...';
-              // La conexión con Apps Script se añadirá
-              // en el siguiente paso.
-            } catch (e) {
-              mensaje.textContent = 'Error: ' + e.message;
+                'Solicitud enviada para: ' + codigo +
+                '. Comprueba la hoja de asistencia para confirmar.';
+
+            } catch (error) {
+              mensaje.textContent =
+                'Error al enviar: ' + error.message;
             }
+
+            boton.textContent = 'Escanear siguiente';
+            boton.disabled = false;
+            boton.removeEventListener('click', iniciarEscaner);
+            boton.addEventListener('click', () => {
+              location.reload();
+            }, { once: true });
           }
         );
 
         mensaje.textContent = 'Cámara activa. Escanea el QR.';
-      } catch (e) {
+
+      } catch (error) {
         mensaje.textContent =
-          'No se pudo abrir la cámara: ' + e.message;
+          'Error de cámara: ' + error.message;
         boton.disabled = false;
       }
-    });
+    }
   </script>
 </body>
 </html>
+
